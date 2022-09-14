@@ -1,7 +1,7 @@
 idf_component_register(SRC_DIRS "src"
                        INCLUDE_DIRS "include"
-                       #REQUIRES "utils" "security"
                        REQUIRES "I2Cbus"
+                                "SPIbus"
                        )
 
 # set(COMPONENT_SRCS

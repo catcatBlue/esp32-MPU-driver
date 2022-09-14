@@ -1,3 +1,24 @@
+# esp32-mpu 驱动库
+
+原本的太老了，于是改了下工程结构，源码放到组件里的 MPU 文件夹里了， i2c 和 spi 的库也克隆下来放组件里了。
+
+给工程和例子写了一下 cmakelist，可以编译。
+
+使用 `idf v4.4.2` 编译，模组使用 `esp32-s3`。
+
+只有 mpu6050，没验证过 spi 接口的能不能用。
+
+递归克隆下来，打开工作区，切换文件夹到 mpu_i2c，然后改一下 i2c 引脚就能用，3 个例子都能编译通过。
+
+# TODO
+
+- [ ] 添加 hmc5883 的支持。
+- [ ] i2c、spi 的库用 esp-iot-solution 里的 bus，这个库 esp-box 也在用。
+
+以下是原本的 readme。
+
+# README
+
 [![Documentation](https://readthedocs.org/projects/esp32-mpu-driver/badge/?version=latest "Documentation Status")](https://esp32-mpu-driver.readthedocs.io/en/latest)
 [![Build Status](https://travis-ci.org/natanaeljr/esp32-MPU-driver.svg?branch=master)](https://travis-ci.org/natanaeljr/esp32-MPU-driver)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -15,15 +36,15 @@ Supports both SPI and I2C protocols interchangeably, selectable bus port, and ev
 
 ## Models
 
-|     part      |      sensors       |   protocol   |
+|          part |      sensors       | protocol     |
 | ------------: | :----------------: | :----------- |
-| **[MPU6000]** | Gyro/Accel         | _I2C_, _SPI_ |
-| **[MPU6050]** | Gyro/Accel         | _I2C_        |
-| **[MPU6500]** | Gyro/Accel         | _I2C_, _SPI_ |
-|  **MPU6555**  | Gyro/Accel         | _I2C_, _SPI_ |
+| **[MPU6000]** |     Gyro/Accel     | _I2C_, _SPI_ |
+| **[MPU6050]** |     Gyro/Accel     | _I2C_        |
+| **[MPU6500]** |     Gyro/Accel     | _I2C_, _SPI_ |
+|   **MPU6555** |     Gyro/Accel     | _I2C_, _SPI_ |
 | **[MPU9150]** | Gyro/Accel/Compass | _I2C_        |
 | **[MPU9250]** | Gyro/Accel/Compass | _I2C_, _SPI_ |
-|  **MPU9255**  | Gyro/Accel/Compass | _I2C_, _SPI_ |
+|   **MPU9255** | Gyro/Accel/Compass | _I2C_, _SPI_ |
 
 [MPU6000]: https://www.invensense.com/products/motion-tracking/6-axis/mpu-6050/
 [MPU6050]: https://www.invensense.com/products/motion-tracking/6-axis/mpu-6050/
