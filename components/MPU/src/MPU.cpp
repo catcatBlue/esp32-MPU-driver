@@ -142,7 +142,8 @@ esp_err_t MPU::testConnection()
     const uint8_t wai = whoAmI();
     if (MPU_ERR_CHECK(lastError())) return err;
 #if defined CONFIG_MPU6000 || defined CONFIG_MPU6050 || defined CONFIG_MPU9150
-    return (wai == 0x68) ? ESP_OK : ESP_ERR_NOT_FOUND;
+    // return (wai == 0x68) ? ESP_OK : ESP_ERR_NOT_FOUND;
+    return ((wai == 0x68) || (wai == 0x72)) ? ESP_OK : ESP_ERR_NOT_FOUND;
 #elif defined CONFIG_MPU9255
     return (wai == 0x73) ? ESP_OK : ESP_ERR_NOT_FOUND;
 #elif defined CONFIG_MPU9250

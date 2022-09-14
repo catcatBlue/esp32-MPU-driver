@@ -13,7 +13,7 @@
  *  - Perform Self-Test check
  *  - Calibrate sensor data output using offset registers
  *  - Calculate Tilt Angles
- * 
+ *
  * @note
  * To try this example: \n
  * Set the I2C/SPI pins in 'Bus configuration' and the interrupt pin in 'MPU configuration'.
@@ -40,33 +40,38 @@
 #include "mpu/math.hpp"
 #include "mpu/types.hpp"
 
+#define ENABLE_POLLING 1 /* 使能轮询？若不使能，则使能中断 */
+
+
 /* Bus configuration */
 
 // This MACROS are defined in "skdconfig.h" and set through 'menuconfig'.
 // Can use to check which protocol has been selected.
 #if defined CONFIG_MPU_I2C
 #include "I2Cbus.hpp"
-static I2C_t& i2c                     = i2c0;  // i2c0 or i2c1
-static constexpr gpio_num_t SDA       = GPIO_NUM_14;
-static constexpr gpio_num_t SCL       = GPIO_NUM_26;
-static constexpr uint32_t CLOCK_SPEED = 400000;  // 400 KHz
-#elif defined CONFIG_MPU_SPI
+static I2C_t               &i2c         = i2c0;        // i2c0 or i2c1
+static constexpr gpio_num_t SDA         = GPIO_NUM_15; /* GPIO_NUM_14 */
+static constexpr gpio_num_t SCL         = GPIO_NUM_7;  /* GPIO_NUM_26 */
+static constexpr uint32_t   CLOCK_SPEED = 400000;      // 400 KHz
+#elif defined               CONFIG_MPU_SPI
 #include "SPIbus.hpp"
-static SPI_t& spi                     = hspi;  // hspi or vspi
-static constexpr int MOSI             = 22;
-static constexpr int MISO             = 21;
-static constexpr int SCLK             = 23;
-static constexpr int CS               = 16;
+static SPI_t             &spi         = hspi;  // hspi or vspi
+static constexpr int      MOSI        = 22;
+static constexpr int      MISO        = 21;
+static constexpr int      SCLK        = 23;
+static constexpr int      CS          = 16;
 static constexpr uint32_t CLOCK_SPEED = 1000000;  // 1MHz
 #endif
 
 /* MPU configuration */
 
-static constexpr int kInterruptPin         = 17;  // GPIO_NUM
-static constexpr uint16_t kSampleRate      = 250;  // Hz
-static constexpr mpud::accel_fs_t kAccelFS = mpud::ACCEL_FS_4G;
-static constexpr mpud::gyro_fs_t kGyroFS   = mpud::GYRO_FS_500DPS;
-static constexpr mpud::dlpf_t kDLPF        = mpud::DLPF_98HZ;
+#if (ENABLE_POLLING != 1)
+static constexpr int kInterruptPin = 17;  // GPIO_NUM
+#endif
+static constexpr uint16_t           kSampleRate = 250;  // Hz
+static constexpr mpud::accel_fs_t   kAccelFS    = mpud::ACCEL_FS_4G;
+static constexpr mpud::gyro_fs_t    kGyroFS     = mpud::GYRO_FS_500DPS;
+static constexpr mpud::dlpf_t       kDLPF       = mpud::DLPF_98HZ;
 static constexpr mpud::int_config_t kInterruptConfig{
     .level = mpud::INT_LVL_ACTIVE_HIGH,
     .drive = mpud::INT_DRV_PUSHPULL,
@@ -76,11 +81,11 @@ static constexpr mpud::int_config_t kInterruptConfig{
 
 /*-*/
 
-static const char* TAG = "example";
+static const char *TAG = "example";
 
-static void mpuISR(void*);
-static void mpuTask(void*);
-static void printTask(void*);
+static void mpuISR(void *);
+static void mpuTask(void *);
+static void printTask(void *);
 
 // Main
 extern "C" void app_main()
@@ -102,9 +107,9 @@ extern "C" void app_main()
 /* Tasks */
 
 static MPU_t MPU;
-float roll{0}, pitch{0}, yaw{0};
+float        roll{0}, pitch{0}, yaw{0};
 
-static void mpuTask(void*)
+static void mpuTask(void *)
 {
 // Let MPU know which bus and address to use
 #if defined CONFIG_MPU_I2C
@@ -128,6 +133,7 @@ static void mpuTask(void*)
     ESP_ERROR_CHECK(MPU.initialize());
 
     // Self-Test
+    /* 第一次自检可能不通过，第二次就行了 */
     mpud::selftest_t retSelfTest;
     while (esp_err_t err = MPU.selfTest(&retSelfTest)) {
         ESP_LOGE(TAG, "Failed to perform MPU Self-Test, error=%#X", err);
@@ -154,9 +160,10 @@ static void mpuTask(void*)
     ESP_ERROR_CHECK(MPU.setFIFOEnabled(true));
     constexpr uint16_t kFIFOPacketSize = 12;
 
+#if (ENABLE_POLLING != 1)
     // Setup Interrupt
     constexpr gpio_config_t kGPIOConfig{
-        .pin_bit_mask = (uint64_t) 0x1 << kInterruptPin,
+        .pin_bit_mask = (uint64_t)0x1 << kInterruptPin,
         .mode         = GPIO_MODE_INPUT,
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_ENABLE,
@@ -164,15 +171,17 @@ static void mpuTask(void*)
     };
     gpio_config(&kGPIOConfig);
     gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-    gpio_isr_handler_add((gpio_num_t) kInterruptPin, mpuISR, xTaskGetCurrentTaskHandle());
+    gpio_isr_handler_add((gpio_num_t)kInterruptPin, mpuISR, xTaskGetCurrentTaskHandle());
     ESP_ERROR_CHECK(MPU.setInterruptConfig(kInterruptConfig));
     ESP_ERROR_CHECK(MPU.setInterruptEnabled(mpud::INT_EN_RAWDATA_READY));
+#endif
 
     // Ready to start reading
     ESP_ERROR_CHECK(MPU.resetFIFO());  // start clean
 
     // Reading Loop
     while (true) {
+#if (ENABLE_POLLING != 1)
         // Wait for notification from mpuISR
         uint32_t notificationValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         if (notificationValue > 1) {
@@ -180,18 +189,25 @@ static void mpuTask(void*)
             MPU.resetFIFO();
             continue;
         }
+#endif
+        vTaskDelay(pdMS_TO_TICKS(4));
         // Check FIFO count
         uint16_t fifocount = MPU.getFIFOCount();
         if (esp_err_t err = MPU.lastError()) {
+#if (ENABLE_POLLING != 1)
             ESP_LOGE(TAG, "Error reading fifo count, %#X", err);
             MPU.resetFIFO();
+#endif
             continue;
         }
         if (fifocount > kFIFOPacketSize * 2) {
             if (!(fifocount % kFIFOPacketSize)) {
-                ESP_LOGE(TAG, "Sample Rate too high!, not keeping up the pace!, count: %d", fifocount);
-            }
-            else {
+#if (ENABLE_POLLING != 1)
+                // ESP_LOGE(TAG, "Sample Rate too high!, not keeping up the pace!, count: %d", fifocount);
+#else
+                continue;
+#endif
+            } else {
                 ESP_LOGE(TAG, "FIFO Count misaligned! Expected: %d, Actual: %d", kFIFOPacketSize, fifocount);
             }
             MPU.resetFIFO();
@@ -214,13 +230,13 @@ static void mpuTask(void*)
         rawGyro.z  = buffer[10] << 8 | buffer[11];
         // Calculate tilt angle
         // range: (roll[-180,180]  pitch[-90,90]  yaw[-180,180])
-        constexpr double kRadToDeg = 57.2957795131;
-        constexpr float kDeltaTime = 1.f / kSampleRate;
-        float gyroRoll             = roll + mpud::math::gyroDegPerSec(rawGyro.x, kGyroFS) * kDeltaTime;
-        float gyroPitch            = pitch + mpud::math::gyroDegPerSec(rawGyro.y, kGyroFS) * kDeltaTime;
-        float gyroYaw              = yaw + mpud::math::gyroDegPerSec(rawGyro.z, kGyroFS) * kDeltaTime;
-        float accelRoll            = atan2(-rawAccel.x, rawAccel.z) * kRadToDeg;
-        float accelPitch = atan2(rawAccel.y, sqrt(rawAccel.x * rawAccel.x + rawAccel.z * rawAccel.z)) * kRadToDeg;
+        constexpr double kRadToDeg  = 57.2957795131;
+        constexpr float  kDeltaTime = 1.f / kSampleRate;
+        float            gyroRoll   = roll + mpud::math::gyroDegPerSec(rawGyro.x, kGyroFS) * kDeltaTime;
+        float            gyroPitch  = pitch + mpud::math::gyroDegPerSec(rawGyro.y, kGyroFS) * kDeltaTime;
+        float            gyroYaw    = yaw + mpud::math::gyroDegPerSec(rawGyro.z, kGyroFS) * kDeltaTime;
+        float            accelRoll  = atan2(-rawAccel.x, rawAccel.z) * kRadToDeg;
+        float            accelPitch = atan2(rawAccel.y, sqrt(rawAccel.x * rawAccel.x + rawAccel.z * rawAccel.z)) * kRadToDeg;
         // Fusion
         roll  = gyroRoll * 0.95f + accelRoll * 0.05f;
         pitch = gyroPitch * 0.95f + accelPitch * 0.05f;
@@ -234,7 +250,7 @@ static void mpuTask(void*)
     vTaskDelete(nullptr);
 }
 
-static void printTask(void*)
+static void printTask(void *)
 {
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     while (true) {
@@ -243,9 +259,12 @@ static void printTask(void*)
     }
 }
 
+#if (ENABLE_POLLING != 1)
 static IRAM_ATTR void mpuISR(TaskHandle_t taskHandle)
 {
     BaseType_t HPTaskWoken = pdFALSE;
     vTaskNotifyGiveFromISR(taskHandle, &HPTaskWoken);
     if (HPTaskWoken == pdTRUE) portYIELD_FROM_ISR();
 }
+#endif
+

@@ -29,9 +29,13 @@
 
 static const char* TAG = "example";
 
-static constexpr gpio_num_t SDA = GPIO_NUM_22;
-static constexpr gpio_num_t SCL = GPIO_NUM_23;
-static constexpr uint32_t CLOCK_SPEED = 400000;  // range from 100 KHz ~ 400Hz
+static constexpr gpio_num_t SDA = GPIO_NUM_15/* GPIO_NUM_22 */;
+static constexpr gpio_num_t SCL = GPIO_NUM_7/* GPIO_NUM_23 */;
+
+// static constexpr gpio_num_t SDA = GPIO_NUM_6;
+// static constexpr gpio_num_t SCL = GPIO_NUM_5;
+
+static constexpr uint32_t CLOCK_SPEED = 100000;  // range from 100 KHz ~ 400Hz
 
 extern "C" void app_main() {
     printf("$ MPU Driver Example: MPU-I2C\n");
@@ -68,9 +72,9 @@ extern "C" void app_main() {
     // Initialize
     ESP_ERROR_CHECK(MPU.initialize());  // initialize the chip and set initial configurations
     // Setup with your configurations
-    // ESP_ERROR_CHECK(MPU.setSampleRate(50));  // set sample rate to 50 Hz
-    // ESP_ERROR_CHECK(MPU.setGyroFullScale(mpud::GYRO_FS_500DPS));
-    // ESP_ERROR_CHECK(MPU.setAccelFullScale(mpud::ACCEL_FS_4G));
+    ESP_ERROR_CHECK(MPU.setSampleRate(50));  // set sample rate to 50 Hz
+    ESP_ERROR_CHECK(MPU.setGyroFullScale(mpud::GYRO_FS_500DPS));
+    ESP_ERROR_CHECK(MPU.setAccelFullScale(mpud::ACCEL_FS_4G));
 
     // Reading sensor data
     printf("Reading sensor data:\n");

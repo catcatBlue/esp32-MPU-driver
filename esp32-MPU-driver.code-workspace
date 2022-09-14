@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "examples/mpu_i2c"
+		},
+		{
+			"path": "examples/mpu_real"
+		}
+	],
+	"settings": {}
+}
